@@ -19,7 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://app-002-gen10-step3-2-node-oshima10.azurewebsites.net",
+        "https://app-002-gen10-step3-1-node-oshima31.azurewebsites.net",
         "rdbs-002-gen10-step3-1-oshima3.mysql.database.azure.com"
     ],
     allow_credentials=True,
