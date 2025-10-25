@@ -73,6 +73,12 @@ cd pos-fastapi
 uvicorn app.main:create_app --factory --reload
 ```
 
+### Code structure (MVP)
+
+- `app/main.py` creates the FastAPI instance and wires CORS, error handlers, and routers.
+- `app/services/auth.py` bundles password hashing, JWT issuance, refresh tokens, and signup/login helpers.
+- Legacy POS helpers stay in `app/services/pos_legacy.py`; LINE OIDC logic lives in `app/services/line_oidc.py`.
+
 ### Running tests
 
 ```bash
