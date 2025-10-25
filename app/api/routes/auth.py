@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,7 +89,7 @@ async def login(
     payload: LoginRequest,
     response: Response,
     session: AsyncSession = Depends(get_async_session),
-) -> LoginResponse:
+) -> RedirectResponse:
     result = await auth_service.login(
         session,
         email=payload.email,
@@ -131,21 +131,22 @@ async def get_me(
 
 
 @router.get("/line/login")
-async def line_login() -> RedirectResponse:
-    url, context_token = line_oidc.create_login_redirect()
+async def line_login(
+    redirect: Optional[str] = Query(None),
+) -> RedirectResponse:
+    url, context_token = line_oidc.create_login_redirect(redirect_to=redirect)
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
     line_oidc.set_context_cookie(response, context_token)
     return response
 
 
-@router.get("/line/callback", response_model=LoginResponse)
+@router.get("/line/callback")
 async def line_callback(
     request: Request,
-    response: Response,
     code: Optional[str] = None,
     state: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session),
-) -> LoginResponse:
+) -> RedirectResponse:
     if not code:
         raise ApiError(
             code="line_code_missing",
@@ -161,8 +162,6 @@ async def line_callback(
         )
 
     context = line_oidc.decode_context(context_token)
-    line_oidc.clear_context_cookie(response)
-
     if not state:
         raise ApiError(
             code="line_state_missing",
@@ -188,5 +187,11 @@ async def line_callback(
         display_name=profile.display_name,
         email_verified=profile.email_verified,
     )
-    _set_refresh_cookie(response, result)
-    return _build_token_response(result)
+    redirect_url = line_oidc.resolve_post_login_redirect(context.redirect_to)
+    redirect_response = RedirectResponse(
+        redirect_url,
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+    _set_refresh_cookie(redirect_response, result)
+    line_oidc.clear_context_cookie(redirect_response)
+    return redirect_response
