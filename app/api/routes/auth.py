@@ -19,12 +19,12 @@ from app.schemas.auth import (
     TokenResponse,
     UserPublic,
 )
-from app.services import auth_service, line_oidc
+from app.services import auth, line_oidc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _set_refresh_cookie(response: Response, result: auth_service.AuthResult) -> None:
+def _set_refresh_cookie(response: Response, result: auth.AuthResult) -> None:
     bundle = result.refresh_bundle
     max_age = int((bundle.expires_at - datetime.utcnow()).total_seconds())
     if max_age < 0:
@@ -55,7 +55,7 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-def _build_token_response(result: auth_service.AuthResult) -> TokenResponse:
+def _build_token_response(result: auth.AuthResult) -> TokenResponse:
     return TokenResponse(
         access_token=result.access_token,
         expires_at=result.access_expires_at,
@@ -74,7 +74,7 @@ async def signup(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ) -> SignupResponse:
-    result = await auth_service.signup(
+    result = await auth.signup(
         session,
         email=payload.email,
         password=payload.password,
@@ -90,7 +90,7 @@ async def login(
     response: Response,
     session: AsyncSession = Depends(get_async_session),
 ) -> RedirectResponse:
-    result = await auth_service.login(
+    result = await auth.login(
         session,
         email=payload.email,
         password=payload.password,
@@ -106,7 +106,7 @@ async def refresh(
     session: AsyncSession = Depends(get_async_session),
 ) -> TokenResponse:
     refresh_token = request.cookies.get(settings.refresh_cookie_name)
-    result = await auth_service.refresh(session, refresh_token=refresh_token)
+    result = await auth.refresh(session, refresh_token=refresh_token)
     _set_refresh_cookie(response, result)
     return _build_token_response(result)
 
@@ -118,7 +118,7 @@ async def logout(
     session: AsyncSession = Depends(get_async_session),
 ) -> LogoutResponse:
     refresh_token = request.cookies.get(settings.refresh_cookie_name)
-    await auth_service.logout(session, refresh_token=refresh_token)
+    await auth.logout(session, refresh_token=refresh_token)
     _clear_refresh_cookie(response)
     return LogoutResponse()
 
@@ -179,7 +179,7 @@ async def line_callback(
     profile_payload = await line_oidc.fetch_profile(token_data.get("access_token"))
     profile = line_oidc.build_profile(verify_payload, profile_payload)
 
-    result = await auth_service.login_with_provider(
+    result = await auth.login_with_provider(
         session,
         provider=AuthProvider.line,
         provider_user_id=profile.provider_user_id,
