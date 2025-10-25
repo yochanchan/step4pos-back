@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.db.models import RefreshToken
 from app.db.session import AsyncSessionLocal
 
-PASSWORD = "ValidPass!2345"
+PASSWORD = "Passw1"
 
 
 async def signup_user(client, email: str = "user@example.com") -> None:
