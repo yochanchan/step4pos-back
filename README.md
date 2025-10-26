@@ -2,8 +2,8 @@
 
 This repository contains two applications:
 
-- `pos-fastapi/` — FastAPI backend with JWT auth, Argon2 password hashing, Azure Database for MySQL (async SQLAlchemy), and LINE OIDC integration.
-- `sample-next/` — Next.js (App Router, TypeScript) frontend that consumes the backend APIs from the `/login` page.
+- `pos-fastapi/`  FastAPI backend with JWT auth, Argon2 password hashing, Azure Database for MySQL (async SQLAlchemy), and Google OAuth 2.0 (OIDC) integration.
+- `sample-next/`  Next.js (App Router, TypeScript) frontend that consumes the backend APIs from the `/login` page.
 
 Each project maintains its own dependencies and tooling but they are expected to work together through the APIs documented below.
 
@@ -19,10 +19,10 @@ Each project maintains its own dependencies and tooling but they are expected to
 
 ### Installation
 
-```bash
+```
 cd pos-fastapi
 python -m venv env
-.\env\Scripts\activate
+./env/Scripts/activate  # Windows
 pip install -r requirements.txt
 ```
 
@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 Create a `.env` file (a sample was provided) containing:
 
-```bash
+```
 DATABASE_URL="mysql+asyncmy://USER:PASSWORD@HOST:3306/DATABASE?charset=utf8mb4"
 # optionally use legacy DB_* vars if DATABASE_URL is omitted
 # DB_HOST=..., DB_USER=..., etc.
@@ -45,13 +45,19 @@ REFRESH_COOKIE_NAME="pos_refresh_token"
 REFRESH_COOKIE_SECURE=true
 REFRESH_COOKIE_PATH="/"
 REFRESH_COOKIE_SAMESITE="lax"
-REFRESH_COOKIE_DOMAIN= # optional
+REFRESH_COOKIE_DOMAIN=
 
-# LINE OIDC config
-OIDC_LINE_CLIENT_ID="..."
-OIDC_LINE_CLIENT_SECRET="..."
-OIDC_LINE_REDIRECT_URI="https://your-frontend-domain/auth/line/callback"
+# Google OAuth config
+GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="..."
+GOOGLE_REDIRECT_URI="http://localhost:8000/auth/google/callback"
+# GOOGLE_COOKIE_SECURE=false  # optional: override auto-detection for non-HTTPS local testing
 ```
+
+Authorized redirect URIs in Google Cloud Console:
+
+- http://localhost:8000/auth/google/callback
+- https://app-002-gen10-step3-1-py-oshima31.azurewebsites.net/auth/google/callback
 
 > NOTE: To use Azure TLS certificates, set `SSL_CA_PATH` to the CA chain file and ensure the file is mounted inside the container/host.
 
@@ -59,16 +65,16 @@ OIDC_LINE_REDIRECT_URI="https://your-frontend-domain/auth/line/callback"
 
 The service expects the following tables:
 
-- `users` — local accounts and shared profile data
-- `auth_identities` — line and future social provider identities, foreign key to `users`
-- `refresh_tokens` — hashed refresh tokens with reuse detection
-- `item_code`, `deal`, `deal_detail` — legacy POS tables still consumed via `app/api/routes/legacy_pos.py`
+- `users`  local accounts and shared profile data
+- `auth_identities`  Google and future social provider identities, foreign key to `users`
+- `refresh_tokens`  hashed refresh tokens with reuse detection
+- `item_code`, `deal`, `deal_detail`  legacy POS tables still consumed via `app/api/routes/legacy_pos.py`
 
 The full schemas are captured in `app/db/models/`.
 
 ### Running the server
 
-```bash
+```
 cd pos-fastapi
 uvicorn app.main:create_app --factory --reload
 ```
@@ -77,31 +83,31 @@ uvicorn app.main:create_app --factory --reload
 
 - `app/main.py` creates the FastAPI instance and wires CORS, error handlers, and routers.
 - `app/services/auth.py` bundles password hashing, JWT issuance, refresh tokens, and signup/login helpers.
-- Legacy POS helpers stay in `app/services/pos_legacy.py`; LINE OIDC logic lives in `app/services/line_oidc.py`.
+- Legacy POS helpers stay in `app/services/pos_legacy.py`; Google OAuth helpers live in `app/services/google_oauth.py`.
 
 ### Running tests
 
-```bash
+```
 cd pos-fastapi
-.\env\Scripts\activate
+./env/Scripts/activate
 python -m pytest -q
 ```
 
-> Tests currently target an in-memory SQLite database with SQLAlchemy’s async engine; production uses MySQL. Be sure to run integration tests against MySQL before deployment.
+> Tests currently target SQLite (aiosqlite) for speed; production uses MySQL. Verify against staging MySQL before release.
 
 ### API summary
 
-| Method | Path                  | Description                                    |
-| ------ | --------------------- | ---------------------------------------------- |
-| POST   | `/auth/signup`        | Email/password signup, returns access token    |
-| POST   | `/auth/login`         | Email/password login, returns access token     |
-| POST   | `/auth/refresh`       | Rotate refresh token via HttpOnly cookie       |
-| POST   | `/auth/logout`        | Revoke refresh token and clear cookie          |
-| GET    | `/auth/me`            | Return authenticated user (Bearer JWT)         |
-| GET    | `/auth/line/login`    | Redirect to LINE authorization endpoint        |
-| GET    | `/auth/line/callback` | Handle LINE OIDC callback, issue new tokens    |
-| GET    | `/item?prd_code=xxx`  | Lookup product in legacy POS tables            |
-| POST   | `/deal`               | Insert purchase + details into legacy POS      |
+| Method | Path                      | Description                                    |
+| ------ | ------------------------- | ---------------------------------------------- |
+| POST   | `/auth/signup`            | Email/password signup, returns access token    |
+| POST   | `/auth/login`             | Email/password login, returns access token     |
+| POST   | `/auth/refresh`           | Rotate refresh token via HttpOnly cookie       |
+| POST   | `/auth/logout`            | Revoke refresh token and clear cookie          |
+| GET    | `/auth/me`                | Return authenticated user (Bearer JWT)         |
+| GET    | `/auth/google/login`      | Redirect to Google authorization endpoint      |
+| GET    | `/auth/google/callback`   | Handle Google OIDC callback, issue new tokens  |
+| GET    | `/item?prd_code=xxx`      | Lookup product in legacy POS tables            |
+| POST   | `/deal`                   | Insert purchase + details into legacy POS      |
 
 ---
 
@@ -114,7 +120,7 @@ python -m pytest -q
 
 ### Installation
 
-```bash
+```
 cd sample-next
 npm install
 ```
@@ -123,7 +129,7 @@ npm install
 
 Create `.env.local` with:
 
-```bash
+```
 NEXT_PUBLIC_API_ENDPOINT="http://localhost:8000"
 ```
 
@@ -131,34 +137,22 @@ Ensure the origin matches what the backend allows for CORS.
 
 ### Development
 
-```bash
+```
 cd sample-next
 npm run dev
 ```
 
-### Linting
-
-```bash
-npm run lint
-```
-
 ### Login page behaviour
 
-- Email/password login and signup (zs validated) communicate with the `/auth` endpoints.
+- Email/password login and signup use `/auth/*` endpoints.
 - Automatic refresh token handling is implemented in `src/lib/api.ts`.
-- The LINE login button navigates to the backend redirect `/auth/line/login`.
-- When already logged in, the header shows the current user and provides a logout button.
+- The Google login button navigates to `/auth/google/login?redirect=/`.
+- After login/signup/social login, the app redirects to `/`.
 
 ---
 
 ## Integration Notes
 
 - Configure CORS to allow credentials and set `REFRESH_COOKIE_*` to align with the frontend domain.
-- The frontend relies exclusively on HttpOnly refresh cookies; make sure HTTPS and SameSite settings are correct in production.
-- For MySQL deployments on Azure, load the DigiCert CA (see `pos-fastapi/DigiCertGlobalRootG2.crt.pem`) and point `SSL_CA_PATH` accordingly.
-- LINE OIDC requires redirect URL matching and verified channel credentials.
-
-### Suggested further work
-
-- Add production-ready logging & monitoring hooks for authentication events.
-- Introduce e2e smoke tests running against a staging MySQL database.
+- The frontend relies on HttpOnly refresh cookies; ensure HTTPS and SameSite in production.
+- For Azure MySQL, use the provided DigiCert CA and set `SSL_CA_PATH`.

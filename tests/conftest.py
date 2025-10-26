@@ -14,9 +14,9 @@ os.environ.setdefault("ACCESS_TOKEN_TTL_MIN", "15")
 os.environ.setdefault("REFRESH_TOKEN_TTL_DAY", "14")
 os.environ.setdefault("REFRESH_COOKIE_SECURE", "false")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
-os.environ.setdefault("OIDC_LINE_CLIENT_ID", "line-client-id")
-os.environ.setdefault("OIDC_LINE_CLIENT_SECRET", "line-client-secret")
-os.environ.setdefault("OIDC_LINE_REDIRECT_URI", "http://localhost:3000/auth/line/callback")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "google-client-id.apps.googleusercontent.com")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "google-client-secret")
+os.environ.setdefault("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 
 # Clear cached settings so they reflect the overrides above.
 import app.core.config as config_module

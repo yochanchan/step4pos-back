@@ -1,62 +1,54 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-
-# Node.js (frontend)
-node_modules/
-.next/
-.out/
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# OS artifacts
 .DS_Store
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+.coverage
+coverage.xml
+htmlcov/
 
-# env files (can opt-in for committing if needed)
-.env*
+# Build & packaging
+build/
+dist/
+*.egg-info/
+.eggs/
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# Python (backend)
+# Virtual environments
+.venv/
+.venv*/
 venv/
 env/
-__pycache__/
-*.pyc
 
-# Googleの認証キー（.jsonで終わるファイルすべて）
-*.json
+# Tooling caches
+.cache/
+.idea/
+.vscode/
+*.code-workspace
 
-# 環境変数を書くファイル
+# Logs & runtime data
+*.log
+*.log.*
+*.sqlite3
+tests/test.db
+
+# Environment & secrets
 .env
+.env.*
+!.env.example
 
- # 音声ファイル
-*.wav
-*.mp3
+# Frontend artifacts (if embedded)
+node_modules/
+.pnp*
+.yarn/
+.next/
+out/
+dist/
+

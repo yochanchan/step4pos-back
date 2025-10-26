@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
@@ -19,7 +19,8 @@ from app.schemas.auth import (
     TokenResponse,
     UserPublic,
 )
-from app.services import auth, line_oidc
+from app.services import auth
+from app.services import google_oauth
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -130,18 +131,18 @@ async def get_me(
     return UserPublic.model_validate(current_user)
 
 
-@router.get("/line/login")
-async def line_login(
+@router.get("/google/login")
+async def google_login(
     redirect: Optional[str] = Query(None),
 ) -> RedirectResponse:
-    url, context_token = line_oidc.create_login_redirect(redirect_to=redirect)
+    url, context_token = google_oauth.create_login_redirect(redirect_to=redirect)
     response = RedirectResponse(url, status_code=status.HTTP_302_FOUND)
-    line_oidc.set_context_cookie(response, context_token)
+    google_oauth.set_context_cookie(response, context_token)
     return response
 
 
-@router.get("/line/callback")
-async def line_callback(
+@router.get("/google/callback")
+async def google_callback(
     request: Request,
     code: Optional[str] = None,
     state: Optional[str] = None,
@@ -149,49 +150,48 @@ async def line_callback(
 ) -> RedirectResponse:
     if not code:
         raise ApiError(
-            code="line_code_missing",
-            message="LINE認証コードが不足しています。",
+            code="google_code_missing",
+            message="Google 認証コードが見つかりません。",
             status_code=400,
         )
-    context_token = request.cookies.get(line_oidc.CONTEXT_COOKIE_NAME)
+    context_token = request.cookies.get(google_oauth.CONTEXT_COOKIE_NAME)
     if not context_token:
         raise ApiError(
-            code="line_context_missing",
-            message="LINE認証コンテキストが見つかりません。",
+            code="google_context_missing",
+            message="Google 認証コンテキストが見つかりません。",
             status_code=401,
         )
 
-    context = line_oidc.decode_context(context_token)
+    context = google_oauth.decode_context(context_token)
     if not state:
         raise ApiError(
-            code="line_state_missing",
-            message="LINE認証の state が不足しています。",
+            code="google_state_missing",
+            message="Google 認証の state が見つかりません。",
             status_code=401,
         )
-    line_oidc.decode_state_hash(context, state)
-    line_oidc.validate_redirect(context)
+    google_oauth.decode_state_hash(context, state)
+    google_oauth.validate_redirect(context)
 
-    token_data = await line_oidc.exchange_code_for_tokens(code, context.code_verifier)
-    verify_payload = await line_oidc.verify_id_token(
-        token_data.get("id_token"),
-        expected_nonce=context.nonce,
+    token_data = await google_oauth.exchange_code_for_tokens(code, context.code_verifier)
+    verify_payload = await google_oauth.verify_id_token(
+        token_data.get("id_token"), expected_nonce=context.nonce
     )
-    profile_payload = await line_oidc.fetch_profile(token_data.get("access_token"))
-    profile = line_oidc.build_profile(verify_payload, profile_payload)
+    profile = google_oauth.build_profile(verify_payload)
 
     result = await auth.login_with_provider(
         session,
-        provider=AuthProvider.line,
+        provider=AuthProvider.google,
         provider_user_id=profile.provider_user_id,
         email=profile.email,
         display_name=profile.display_name,
         email_verified=profile.email_verified,
     )
-    redirect_url = line_oidc.resolve_post_login_redirect(context.redirect_to)
+    redirect_url = google_oauth.resolve_post_login_redirect(context.redirect_to)
     redirect_response = RedirectResponse(
         redirect_url,
         status_code=status.HTTP_303_SEE_OTHER,
     )
     _set_refresh_cookie(redirect_response, result)
-    line_oidc.clear_context_cookie(redirect_response)
+    google_oauth.clear_context_cookie(redirect_response)
     return redirect_response
+

@@ -42,9 +42,10 @@ class Settings(BaseModel):
     refresh_cookie_path: str = "/"
     refresh_cookie_same_site: Optional[str] = "lax"
 
-    line_client_id: Optional[str] = None
-    line_client_secret: Optional[str] = None
-    line_redirect_uri: Optional[str] = None
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: Optional[str] = None
+    google_cookie_secure: bool = True
 
     @classmethod
     def load(cls) -> "Settings":
@@ -71,6 +72,14 @@ class Settings(BaseModel):
                     f"@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
                 )
 
+        google_redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+        if os.getenv("GOOGLE_COOKIE_SECURE") is not None:
+            google_cookie_secure = _env_bool("GOOGLE_COOKIE_SECURE", True)
+        else:
+            google_cookie_secure = bool(
+                google_redirect_uri and google_redirect_uri.startswith("https://")
+            )
+
         return cls(
             cors_origins=origins,
             database_url=database_url,
@@ -84,9 +93,10 @@ class Settings(BaseModel):
             refresh_cookie_secure=_env_bool("REFRESH_COOKIE_SECURE", True),
             refresh_cookie_path=os.getenv("REFRESH_COOKIE_PATH", "/"),
             refresh_cookie_same_site=_normalize_same_site(os.getenv("REFRESH_COOKIE_SAMESITE", "lax")),
-            line_client_id=os.getenv("OIDC_LINE_CLIENT_ID"),
-            line_client_secret=os.getenv("OIDC_LINE_CLIENT_SECRET"),
-            line_redirect_uri=os.getenv("OIDC_LINE_REDIRECT_URI"),
+            google_client_id=os.getenv("GOOGLE_CLIENT_ID"),
+            google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+            google_redirect_uri=google_redirect_uri,
+            google_cookie_secure=google_cookie_secure,
         )
 
 

@@ -96,8 +96,8 @@ async def test_refresh_rotation_and_reuse_detection(client):
 
 
 @pytest.mark.asyncio
-async def test_line_login_sets_context_cookie(client):
-    response = await client.get("/auth/line/login")
+async def test_google_login_sets_context_cookie(client):
+    response = await client.get("/auth/google/login")
     assert response.status_code == 302
-    assert response.headers["location"].startswith("https://access.line.me")
-    assert "line_oidc_ctx" in response.cookies
+    assert response.headers["location"].startswith("https://accounts.google.com")
+    assert "google_oauth_ctx" in response.cookies
