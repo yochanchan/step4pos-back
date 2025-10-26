@@ -156,3 +156,12 @@ npm run dev
 - Configure CORS to allow credentials and set `REFRESH_COOKIE_*` to align with the frontend domain.
 - The frontend relies on HttpOnly refresh cookies; ensure HTTPS and SameSite in production.
 - For Azure MySQL, use the provided DigiCert CA and set `SSL_CA_PATH`.
+---
+
+## Security & Secrets
+
+- Do not commit real secrets. .env and .env.* are ignored; use .env.example as a template.
+- If secrets were ever pushed, rotate them (DB password, JWT_SECRET, OAuth secrets) and purge history if needed (e.g., git filter-repo).
+- Configure CI/CD with GitHub Actions Secrets (e.g., publish profiles, database credentials).
+- Enable GitHub secret scanning or add a pre-commit hook (e.g., gitleaks) for local checks.
+- TLS CA: DigiCertGlobalRootG2.crt.pem is a public root CA and is intentionally tracked. For other certs/keys, do not commit them; provide paths via env (e.g., SSL_CA_PATH).

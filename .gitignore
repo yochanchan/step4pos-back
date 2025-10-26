@@ -44,6 +44,12 @@ tests/test.db
 .env.*
 !.env.example
 
+# SSL certificates / keys
+*.pem
+*.crt
+*.key
+!DigiCertGlobalRootG2.crt.pem
+
 # Frontend artifacts (if embedded)
 node_modules/
 .pnp*
@@ -51,4 +57,5 @@ node_modules/
 .next/
 out/
 dist/
+
 
